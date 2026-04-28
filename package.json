@@ -1,0 +1,21 @@
+{
+  "name": "cordova-plugin-inappview",
+  "version": "1.0.0",
+  "cordova": {
+    "id": "cordova.plugin.inappview",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-ios",
+    "cordova-android",
+    "inappview",
+    "webview"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "A generic Cordova plugin that opens URLs in an in-app WebView with a custom top bar."
+}

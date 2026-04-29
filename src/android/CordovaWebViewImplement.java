@@ -24,6 +24,7 @@ public class CordovaWebViewImplement extends Activity {
     private WebView mWebView;
     private ProgressBar mProgressBar;
     private boolean mShouldBack;
+    private String mLastUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +42,7 @@ public class CordovaWebViewImplement extends Activity {
             toolbarTitle.setText(title);
         }
 
-        closeButton.setOnClickListener(v -> finish());
+        closeButton.setOnClickListener(v -> finishWithLastUrl());
 
         WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -58,6 +59,10 @@ public class CordovaWebViewImplement extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 mProgressBar.setVisibility(View.GONE);
+                mLastUrl = url;
+                if (CordovaInAppView.urlChangeListener != null) {
+                    CordovaInAppView.urlChangeListener.onUrlChanged(url);
+                }
             }
 
             @Override
@@ -89,10 +94,19 @@ public class CordovaWebViewImplement extends Activity {
         mWebView.loadUrl(url);
     }
 
+    private void finishWithLastUrl() {
+        Intent result = new Intent();
+        if (mLastUrl != null) {
+            result.putExtra("LAST_URL", mLastUrl);
+        }
+        setResult(RESULT_OK, result);
+        finish();
+    }
+
     @Override
     public void onBackPressed() {
         if (mShouldBack) {
-            super.onBackPressed();
+            finishWithLastUrl();
         }
     }
 }

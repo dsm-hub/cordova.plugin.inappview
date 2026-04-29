@@ -28,6 +28,12 @@ public class CordovaInAppView extends CordovaPlugin {
 
     public static final int REQUEST_CODE = 1;
 
+    public interface UrlChangeListener {
+        void onUrlChanged(String url);
+    }
+
+    public static UrlChangeListener urlChangeListener;
+
     private CallbackContext callbackContext;
 
     @Override
@@ -56,13 +62,22 @@ public class CordovaInAppView extends CordovaPlugin {
                 }
 
                 try {
-                    show(url, title, animated, activateBackButton);
-                    JSONObject result = new JSONObject();
-                    result.put("event", "loaded");
-                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, result);
-                    pluginResult.setKeepCallback(true);
                     this.callbackContext = callbackContext;
-                    callbackContext.sendPluginResult(pluginResult);
+                    urlChangeListener = changedUrl -> {
+                        if (this.callbackContext != null) {
+                            try {
+                                JSONObject navResult = new JSONObject();
+                                navResult.put("event", "navigationChanged");
+                                navResult.put("url", changedUrl);
+                                PluginResult navPluginResult = new PluginResult(PluginResult.Status.OK, navResult);
+                                navPluginResult.setKeepCallback(true);
+                                this.callbackContext.sendPluginResult(navPluginResult);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    };
+                    show(url, title, animated, activateBackButton);
                 } catch (Exception ex) {
                     JSONObject result = new JSONObject();
                     result.put("error", ex.getMessage());
@@ -97,9 +112,12 @@ public class CordovaInAppView extends CordovaPlugin {
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
         if (requestCode == REQUEST_CODE && callbackContext != null) {
+            urlChangeListener = null;
             JSONObject result = new JSONObject();
             try {
                 result.put("event", "closed");
+                String lastUrl = (intent != null) ? intent.getStringExtra("LAST_URL") : null;
+                result.put("url", lastUrl != null ? lastUrl : "");
             } catch (JSONException e) {
                 e.printStackTrace();
             }

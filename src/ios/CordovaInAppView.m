@@ -65,12 +65,13 @@
 #pragma mark - WKWebViewControllerDelegate
 
 - (void)webViewControllerDidClose:(WKWebViewController *)controller {
+    NSString *lastUrl = controller.webView.URL.absoluteString ?: @"";
     __weak CordovaInAppView *weakSelf = self;
     [self.viewController dismissViewControllerAnimated:self.animated completion:^{
         weakSelf.vc = nil;
     }];
     if (self.callbackId != nil) {
-        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"closed"}];
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"closed", @"url": lastUrl}];
         [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
         self.callbackId = nil;
     }
@@ -84,8 +85,9 @@
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
     [self.vc stopActivityIndicator];
-    if (self.callbackId != nil && [webView.URL.absoluteString isEqualToString:self.vc.url.absoluteString]) {
-        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"loaded"}];
+    if (self.callbackId != nil) {
+        NSString *currentUrl = webView.URL.absoluteString ?: @"";
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"navigationChanged", @"url": currentUrl}];
         [result setKeepCallback:@YES];
         [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
     }

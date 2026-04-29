@@ -84,7 +84,7 @@ cordova.plugins.CordovaInAppView.show(options, onSuccess, onError)
 
 | Property             | Type      | Default | Description                                              |
 |----------------------|-----------|---------|----------------------------------------------------------|
-| `url`                | `string`  | —       | **Required.** The URL to load. Must start with `http` or `https`. |
+| `url`                | `string`  | —       | **Required.** The URL to load. Must start with `http://`, `https://`, `file://`, or `app://` (iOS Cordova custom scheme). |
 | `title`              | `string`  | `''`    | Text displayed in the top bar.                           |
 | `animated`           | `boolean` | `true`  | Whether to use a slide-in animation on open.             |
 | `activateBackButton` | `boolean` | `true`  | Whether the hardware back button (Android) closes the view. |

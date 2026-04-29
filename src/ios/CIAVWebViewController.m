@@ -38,13 +38,40 @@ static const CGFloat kCIAVToolbarHeight = 56.0;
     return self;
 }
 
+// Returns a file:// NSURL for file:// and app:// inputs, nil for http(s) URLs.
+// app://localhost/assets/foo.html#frag → file:///bundle/www/assets/foo.html#frag
++ (NSURL *)resolveFileURL:(NSURL *)url {
+    if ([url isFileURL]) {
+        return url;
+    }
+    if ([[url.scheme lowercaseString] isEqualToString:@"app"]) {
+        NSString *wwwPath = [[NSBundle mainBundle] pathForResource:@"www" ofType:nil];
+        if (wwwPath == nil) return nil;
+        NSString *filePath = [wwwPath stringByAppendingPathComponent:url.path];
+        NSURLComponents *components = [NSURLComponents new];
+        components.scheme   = @"file";
+        components.host     = @"";
+        components.path     = filePath;
+        components.fragment = url.fragment;
+        return components.URL;
+    }
+    return nil;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self buildTopBar];
 
     if (![self.view.subviews containsObject:self.webView]) {
         [self.view addSubview:self.webView];
-        [self.webView loadRequest:[NSURLRequest requestWithURL:_url]];
+        NSURL *fileURL = [CIAVWebViewController resolveFileURL:_url];
+        if (fileURL != nil) {
+            NSString *wwwPath = [[NSBundle mainBundle] pathForResource:@"www" ofType:nil];
+            NSURL *readAccessURL = [NSURL fileURLWithPath:wwwPath isDirectory:YES];
+            [self.webView loadFileURL:fileURL allowingReadAccessToURL:readAccessURL];
+        } else {
+            [self.webView loadRequest:[NSURLRequest requestWithURL:_url]];
+        }
     }
 }
 

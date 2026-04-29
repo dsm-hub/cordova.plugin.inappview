@@ -47,6 +47,8 @@ public class CordovaWebViewImplement extends Activity {
         WebSettings webSettings = mWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
 
         String url = getIntent().getStringExtra("URL");
         mShouldBack = getIntent().getBooleanExtra(ACTIVATE_BACK_BUTTON_KEY, true);
@@ -67,7 +69,7 @@ public class CordovaWebViewImplement extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (url == null || url.startsWith("http://") || url.startsWith("https://"))
+                if (url == null || url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://"))
                     return false;
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));

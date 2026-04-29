@@ -23,8 +23,9 @@
         [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"url can't be empty"] callbackId:command.callbackId];
         return;
     }
-    if (![[urlString lowercaseString] hasPrefix:@"http"]) {
-        [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"url must start with http or https"] callbackId:command.callbackId];
+    NSString *lower = [urlString lowercaseString];
+    if (!([lower hasPrefix:@"http"] || [lower hasPrefix:@"file://"] || [lower hasPrefix:@"app://"])) {
+        [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"url must start with http, https, file://, or app://"] callbackId:command.callbackId];
         return;
     }
     NSURL *url = [NSURL URLWithString:urlString];

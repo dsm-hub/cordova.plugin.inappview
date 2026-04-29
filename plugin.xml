@@ -19,8 +19,8 @@
         </config-file>
         <source-file src="src/ios/CordovaInAppView.m" />
         <header-file src="src/ios/CordovaInAppView.h" />
-        <source-file src="src/ios/WKWebViewController.m" />
-        <header-file src="src/ios/WKWebViewController.h" />
+        <source-file src="src/ios/CIAVWebViewController.m" />
+        <header-file src="src/ios/CIAVWebViewController.h" />
     </platform>
 
     <!-- Android -->

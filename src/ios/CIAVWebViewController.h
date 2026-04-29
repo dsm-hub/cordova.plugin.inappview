@@ -3,19 +3,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class WKWebViewController;
+@class CIAVWebViewController;
 
-@protocol WKWebViewControllerDelegate <NSObject>
-- (void)webViewControllerDidClose:(WKWebViewController *)controller;
+@protocol CIAVWebViewControllerDelegate <NSObject>
+- (void)ciavWebViewControllerDidClose:(CIAVWebViewController *)controller;
 @end
 
-@interface WKWebViewController : UIViewController
+@interface CIAVWebViewController : UIViewController
 
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic) UIActivityIndicatorView *activityIndicator;
 @property (nonatomic, strong, readonly) NSURL *url;
 @property (nonatomic) id<WKNavigationDelegate> navigationDelegate;
-@property (nonatomic, weak) id<WKWebViewControllerDelegate> delegate;
+@property (nonatomic, weak) id<CIAVWebViewControllerDelegate> delegate;
 
 - (instancetype)initWithURL:(NSURL *)url
                       title:(NSString *)title

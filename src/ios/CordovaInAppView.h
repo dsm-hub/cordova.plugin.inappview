@@ -1,9 +1,9 @@
 #import <Cordova/CDVPlugin.h>
 #import <WebKit/WKNavigationDelegate.h>
 #import <WebKit/WKUIDelegate.h>
-#import "WKWebViewController.h"
+#import "CIAVWebViewController.h"
 
-@interface CordovaInAppView : CDVPlugin <WKNavigationDelegate, WKUIDelegate, WKWebViewControllerDelegate>
+@interface CordovaInAppView : CDVPlugin <WKNavigationDelegate, WKUIDelegate, CIAVWebViewControllerDelegate>
 
 @property (nonatomic, copy) NSString *callbackId;
 @property (nonatomic) BOOL animated;

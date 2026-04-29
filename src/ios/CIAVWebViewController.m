@@ -1,18 +1,18 @@
-#import "WKWebViewController.h"
+#import "CIAVWebViewController.h"
 #import <WebKit/WKPreferences.h>
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWebpagePreferences.h>
 
-static const CGFloat kToolbarHeight = 56.0;
+static const CGFloat kCIAVToolbarHeight = 56.0;
 
-@interface WKWebViewController ()
+@interface CIAVWebViewController ()
 @property (nonatomic, strong) UIView *topBar;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, copy) NSString *pageTitle;
 @end
 
-@implementation WKWebViewController
+@implementation CIAVWebViewController
 
 - (instancetype)initWithURL:(NSURL *)url
                       title:(NSString *)title
@@ -60,15 +60,11 @@ static const CGFloat kToolbarHeight = 56.0;
         topInset = self.view.safeAreaInsets.top;
     }
 
-    CGFloat totalBarHeight = kToolbarHeight + topInset;
+    CGFloat totalBarHeight = kCIAVToolbarHeight + topInset;
     self.topBar.frame = CGRectMake(0, 0, self.view.bounds.size.width, totalBarHeight);
 
-    // Title centered in the toolbar area below the status bar
-    self.titleLabel.frame = CGRectMake(48, topInset, self.view.bounds.size.width - 96, kToolbarHeight);
-
-    // Close button pinned to the right
-    self.closeButton.frame = CGRectMake(self.view.bounds.size.width - 48, topInset, 48, kToolbarHeight);
-
+    self.titleLabel.frame = CGRectMake(48, topInset, self.view.bounds.size.width - 96, kCIAVToolbarHeight);
+    self.closeButton.frame = CGRectMake(self.view.bounds.size.width - 48, topInset, 48, kCIAVToolbarHeight);
     self.webView.frame = CGRectMake(0, totalBarHeight, self.view.bounds.size.width, self.view.bounds.size.height - totalBarHeight);
 }
 
@@ -77,8 +73,6 @@ static const CGFloat kToolbarHeight = 56.0;
 - (void)buildTopBar {
     self.topBar = [[UIView alloc] init];
     self.topBar.backgroundColor = [UIColor whiteColor];
-
-    // Shadow
     self.topBar.layer.shadowColor = [UIColor blackColor].CGColor;
     self.topBar.layer.shadowOpacity = 0.1;
     self.topBar.layer.shadowOffset = CGSizeMake(0, 1);
@@ -104,7 +98,7 @@ static const CGFloat kToolbarHeight = 56.0;
 
 - (void)closeButtonTapped {
     if (self.delegate) {
-        [self.delegate webViewControllerDidClose:self];
+        [self.delegate ciavWebViewControllerDidClose:self];
     } else {
         [self dismissViewControllerAnimated:YES completion:nil];
     }

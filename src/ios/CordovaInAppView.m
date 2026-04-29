@@ -1,11 +1,11 @@
 #import "CordovaInAppView.h"
-#import "WKWebViewController.h"
+#import "CIAVWebViewController.h"
 #import <WebKit/WKNavigationAction.h>
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWindowFeatures.h>
 
 @interface CordovaInAppView ()
-@property (nonatomic, strong) WKWebViewController *vc;
+@property (nonatomic, strong) CIAVWebViewController *vc;
 @end
 
 @implementation CordovaInAppView
@@ -37,10 +37,10 @@
     self.animated = [[options objectForKey:@"animated"] boolValue];
     self.callbackId = command.callbackId;
 
-    self.vc = [[WKWebViewController alloc] initWithURL:url
-                                                 title:title
-                                    navigationDelegate:self
-                                            uiDelegate:self];
+    self.vc = [[CIAVWebViewController alloc] initWithURL:url
+                                                   title:title
+                                      navigationDelegate:self
+                                              uiDelegate:self];
     self.vc.delegate = self;
     self.vc.modalPresentationStyle = UIModalPresentationFullScreen;
 
@@ -62,9 +62,9 @@
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
 
-#pragma mark - WKWebViewControllerDelegate
+#pragma mark - CIAVWebViewControllerDelegate
 
-- (void)webViewControllerDidClose:(WKWebViewController *)controller {
+- (void)ciavWebViewControllerDidClose:(CIAVWebViewController *)controller {
     NSString *lastUrl = controller.webView.URL.absoluteString ?: @"";
     __weak CordovaInAppView *weakSelf = self;
     [self.viewController dismissViewControllerAnimated:self.animated completion:^{

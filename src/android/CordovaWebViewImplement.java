@@ -93,7 +93,15 @@ public class CordovaWebViewImplement extends Activity {
             }
         });
 
-        mWebView.loadUrl(url);
+        // showHTML path — consume the pending HTML string and render it directly.
+        // This completely avoids file:// loading and any associated restrictions.
+        String pendingHtml = CordovaInAppView.pendingHtmlContent;
+        if (pendingHtml != null) {
+            CordovaInAppView.pendingHtmlContent = null;
+            mWebView.loadDataWithBaseURL("about:blank", pendingHtml, "text/html", "UTF-8", null);
+        } else {
+            mWebView.loadUrl(url);
+        }
     }
 
     private void finishWithLastUrl() {

@@ -52,6 +52,36 @@
     [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
 
+- (void)showHTML:(CDVInvokedUrlCommand *)command {
+    NSDictionary *options = [command.arguments objectAtIndex:0];
+
+    NSString *html = options[@"html"];
+    if (html == nil || html.length == 0) {
+        [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                                 messageAsString:@"html can't be empty"]
+                                    callbackId:command.callbackId];
+        return;
+    }
+
+    NSString *title = options[@"title"] ?: @"";
+    self.animated   = [[options objectForKey:@"animated"] boolValue];
+    self.callbackId = command.callbackId;
+
+    self.vc = [[CIAVWebViewController alloc] initWithHTML:html
+                                                    title:title
+                                       navigationDelegate:self
+                                               uiDelegate:self];
+    self.vc.delegate               = self;
+    self.vc.modalPresentationStyle = UIModalPresentationFullScreen;
+
+    [self.viewController presentViewController:self.vc animated:self.animated completion:nil];
+
+    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                            messageAsDictionary:@{@"event": @"opened"}];
+    [result setKeepCallback:@YES];
+    [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
+}
+
 - (void)hide:(CDVInvokedUrlCommand *)command {
     if (self.vc != nil) {
         __weak CordovaInAppView *weakSelf = self;

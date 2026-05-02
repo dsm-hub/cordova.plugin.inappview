@@ -34,6 +34,9 @@ public class CordovaInAppView extends CordovaPlugin {
 
     public static UrlChangeListener urlChangeListener;
 
+    /** HTML string to be rendered directly — set before launching the Activity. */
+    public static String pendingHtmlContent = null;
+
     private CallbackContext callbackContext;
 
     @Override
@@ -85,6 +88,47 @@ public class CordovaInAppView extends CordovaPlugin {
                 }
                 return true;
             }
+            case "showHTML": {
+                final JSONObject options = args.getJSONObject(0);
+                final String html = options.optString("html");
+                final String title = options.optString(TITLE_ATTRIBUTE_KEY, "");
+                final boolean animated = options.optBoolean(ANIMATED_ATTRIBUTE_KEY, true);
+                final boolean activateBackButton = options.optBoolean(ACTIVATE_BACK_BUTTON_KEY, true);
+
+                if (TextUtils.isEmpty(html)) {
+                    JSONObject result = new JSONObject();
+                    result.put("error", "html cannot be empty");
+                    callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, result));
+                    return true;
+                }
+
+                try {
+                    this.callbackContext = callbackContext;
+                    pendingHtmlContent = html;
+                    urlChangeListener = changedUrl -> {
+                        if (this.callbackContext != null) {
+                            try {
+                                JSONObject navResult = new JSONObject();
+                                navResult.put("event", "navigationChanged");
+                                navResult.put("url", changedUrl);
+                                PluginResult navPluginResult = new PluginResult(PluginResult.Status.OK, navResult);
+                                navPluginResult.setKeepCallback(true);
+                                this.callbackContext.sendPluginResult(navPluginResult);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    };
+                    // URL is unused — CordovaWebViewImplement will detect pendingHtmlContent
+                    show("", title, animated, activateBackButton);
+                } catch (Exception ex) {
+                    pendingHtmlContent = null;
+                    JSONObject result = new JSONObject();
+                    result.put("error", ex.getMessage());
+                    callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, result));
+                }
+                return true;
+            }
         }
         return false;
     }
@@ -112,7 +156,8 @@ public class CordovaInAppView extends CordovaPlugin {
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
         if (requestCode == REQUEST_CODE && callbackContext != null) {
-            urlChangeListener = null;
+            urlChangeListener  = null;
+            pendingHtmlContent = null;
             JSONObject result = new JSONObject();
             try {
                 result.put("event", "closed");

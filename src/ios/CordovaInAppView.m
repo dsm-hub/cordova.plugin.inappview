@@ -37,6 +37,7 @@
     NSString *title = options[@"title"] ?: @"";
     self.animated = [[options objectForKey:@"animated"] boolValue];
     self.callbackId = command.callbackId;
+    self.exitUrlPatterns = [self stringArrayFromOptions:options key:@"exitUrlPatterns"];
 
     self.vc = [[CIAVWebViewController alloc] initWithURL:url
                                                    title:title
@@ -66,6 +67,7 @@
     NSString *title = options[@"title"] ?: @"";
     self.animated   = [[options objectForKey:@"animated"] boolValue];
     self.callbackId = command.callbackId;
+    self.exitUrlPatterns = [self stringArrayFromOptions:options key:@"exitUrlPatterns"];
 
     self.vc = [[CIAVWebViewController alloc] initWithHTML:html
                                                     title:title
@@ -102,10 +104,60 @@
         weakSelf.vc = nil;
     }];
     if (self.callbackId != nil) {
-        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"closed", @"url": lastUrl}];
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"closed", @"url": lastUrl, @"exitUrlMatched": @NO}];
         [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
         self.callbackId = nil;
     }
+    self.exitUrlPatterns = nil;
+}
+
+#pragma mark - Exit URL matching
+
+- (NSArray<NSString *> *)stringArrayFromOptions:(NSDictionary *)options key:(NSString *)key {
+    id value = options[key];
+    if (![value isKindOfClass:[NSArray class]]) {
+        return @[];
+    }
+    NSMutableArray<NSString *> *patterns = [NSMutableArray array];
+    for (id item in (NSArray *)value) {
+        if ([item isKindOfClass:[NSString class]] && [(NSString *)item length] > 0) {
+            [patterns addObject:item];
+        }
+    }
+    return patterns;
+}
+
+- (BOOL)urlMatchesExitPattern:(NSString *)urlString {
+    if (urlString == nil) {
+        return NO;
+    }
+    for (NSString *pattern in self.exitUrlPatterns) {
+        if ([urlString hasPrefix:pattern]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+/**
+ * Closes the view for a matched exit URL without ever letting it load in the
+ * in-app WebView. Payment gateway return URLs are often gated behind the host
+ * app's own session, which this WebView doesn't share — loading them here can
+ * bounce through a login/error page before the app ever sees the target URL.
+ * Cancelling the navigation up front and handing the raw URL back to the app
+ * removes that race entirely.
+ */
+- (void)closeForExitUrlMatch:(NSString *)matchedUrl {
+    __weak CordovaInAppView *weakSelf = self;
+    [self.viewController dismissViewControllerAnimated:self.animated completion:^{
+        weakSelf.vc = nil;
+    }];
+    if (self.callbackId != nil) {
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event": @"closed", @"url": matchedUrl ?: @"", @"exitUrlMatched": @YES}];
+        [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
+        self.callbackId = nil;
+    }
+    self.exitUrlPatterns = nil;
 }
 
 #pragma mark - WKNavigationDelegate
@@ -129,6 +181,12 @@
 }
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+    NSString *urlString = navigationAction.request.URL.absoluteString;
+    if ([self urlMatchesExitPattern:urlString]) {
+        decisionHandler(WKNavigationActionPolicyCancel);
+        [self closeForExitUrlMatch:urlString];
+        return;
+    }
     decisionHandler(WKNavigationActionPolicyAllow);
 }
 

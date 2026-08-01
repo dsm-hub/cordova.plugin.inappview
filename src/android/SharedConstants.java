@@ -8,4 +8,6 @@ public class SharedConstants {
     static String SLIDE_IN_ANIMATION_KEY = "slide_in_right";
     static String SLIDE_OUT_ANIMATION_KEY = "slide_out_left";
     static String ACTIVATE_BACK_BUTTON_KEY = "activateBackButton";
+    static String EXIT_URL_PATTERNS_KEY = "exitUrlPatterns";
+    static String EXIT_URL_MATCHED_KEY = "exitUrlMatched";
 }

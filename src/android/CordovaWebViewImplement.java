@@ -16,7 +16,11 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 import static cordova.plugin.inappview.SharedConstants.ACTIVATE_BACK_BUTTON_KEY;
+import static cordova.plugin.inappview.SharedConstants.EXIT_URL_MATCHED_KEY;
+import static cordova.plugin.inappview.SharedConstants.EXIT_URL_PATTERNS_KEY;
 
 @SuppressLint("SetJavaScriptEnabled")
 public class CordovaWebViewImplement extends Activity {
@@ -25,6 +29,7 @@ public class CordovaWebViewImplement extends Activity {
     private ProgressBar mProgressBar;
     private boolean mShouldBack;
     private String mLastUrl;
+    private ArrayList<String> mExitUrlPatterns;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +57,7 @@ public class CordovaWebViewImplement extends Activity {
 
         String url = getIntent().getStringExtra("URL");
         mShouldBack = getIntent().getBooleanExtra(ACTIVATE_BACK_BUTTON_KEY, true);
+        mExitUrlPatterns = getIntent().getStringArrayListExtra(EXIT_URL_PATTERNS_KEY);
         startWebView(url);
     }
 
@@ -69,6 +75,15 @@ public class CordovaWebViewImplement extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // Intercept BEFORE the request is loaded. This is what lets us catch a
+                // payment gateway's return URL even when the target page is private/gated
+                // and would otherwise redirect further (or fail) inside this WebView
+                // before onPageFinished ever fires with a matching URL.
+                if (matchesExitUrlPattern(url)) {
+                    finishWithExitMatch(url);
+                    return true;
+                }
+
                 if (url == null || url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://"))
                     return false;
                 try {
@@ -102,6 +117,26 @@ public class CordovaWebViewImplement extends Activity {
         } else {
             mWebView.loadUrl(url);
         }
+    }
+
+    private boolean matchesExitUrlPattern(String url) {
+        if (url == null || mExitUrlPatterns == null) {
+            return false;
+        }
+        for (String pattern : mExitUrlPatterns) {
+            if (pattern != null && url.startsWith(pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void finishWithExitMatch(String url) {
+        Intent result = new Intent();
+        result.putExtra("LAST_URL", url);
+        result.putExtra(EXIT_URL_MATCHED_KEY, true);
+        setResult(RESULT_OK, result);
+        finish();
     }
 
     private void finishWithLastUrl() {

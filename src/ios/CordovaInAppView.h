@@ -7,6 +7,7 @@
 
 @property (nonatomic, copy) NSString *callbackId;
 @property (nonatomic) BOOL animated;
+@property (nonatomic, strong) NSArray<NSString *> *exitUrlPatterns;
 
 - (void)isAvailable:(CDVInvokedUrlCommand *)command;
 - (void)show:(CDVInvokedUrlCommand *)command;

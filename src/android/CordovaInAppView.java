@@ -17,8 +17,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 import static cordova.plugin.inappview.SharedConstants.ACTIVATE_BACK_BUTTON_KEY;
 import static cordova.plugin.inappview.SharedConstants.ANIMATED_ATTRIBUTE_KEY;
+import static cordova.plugin.inappview.SharedConstants.EXIT_URL_MATCHED_KEY;
+import static cordova.plugin.inappview.SharedConstants.EXIT_URL_PATTERNS_KEY;
 import static cordova.plugin.inappview.SharedConstants.SLIDE_IN_ANIMATION_KEY;
 import static cordova.plugin.inappview.SharedConstants.SLIDE_OUT_ANIMATION_KEY;
 import static cordova.plugin.inappview.SharedConstants.TITLE_ATTRIBUTE_KEY;
@@ -56,6 +60,7 @@ public class CordovaInAppView extends CordovaPlugin {
                 final String title = options.optString(TITLE_ATTRIBUTE_KEY, "");
                 final boolean animated = options.optBoolean(ANIMATED_ATTRIBUTE_KEY, true);
                 final boolean activateBackButton = options.optBoolean(ACTIVATE_BACK_BUTTON_KEY, true);
+                final ArrayList<String> exitUrlPatterns = toStringList(options.optJSONArray(EXIT_URL_PATTERNS_KEY));
 
                 if (TextUtils.isEmpty(url)) {
                     JSONObject result = new JSONObject();
@@ -80,7 +85,7 @@ public class CordovaInAppView extends CordovaPlugin {
                             }
                         }
                     };
-                    show(url, title, animated, activateBackButton);
+                    show(url, title, animated, activateBackButton, exitUrlPatterns);
                 } catch (Exception ex) {
                     JSONObject result = new JSONObject();
                     result.put("error", ex.getMessage());
@@ -94,6 +99,7 @@ public class CordovaInAppView extends CordovaPlugin {
                 final String title = options.optString(TITLE_ATTRIBUTE_KEY, "");
                 final boolean animated = options.optBoolean(ANIMATED_ATTRIBUTE_KEY, true);
                 final boolean activateBackButton = options.optBoolean(ACTIVATE_BACK_BUTTON_KEY, true);
+                final ArrayList<String> exitUrlPatterns = toStringList(options.optJSONArray(EXIT_URL_PATTERNS_KEY));
 
                 if (TextUtils.isEmpty(html)) {
                     JSONObject result = new JSONObject();
@@ -120,7 +126,7 @@ public class CordovaInAppView extends CordovaPlugin {
                         }
                     };
                     // URL is unused — CordovaWebViewImplement will detect pendingHtmlContent
-                    show("", title, animated, activateBackButton);
+                    show("", title, animated, activateBackButton, exitUrlPatterns);
                 } catch (Exception ex) {
                     pendingHtmlContent = null;
                     JSONObject result = new JSONObject();
@@ -133,11 +139,12 @@ public class CordovaInAppView extends CordovaPlugin {
         return false;
     }
 
-    private void show(String url, String title, boolean animated, boolean activateBackButton) {
+    private void show(String url, String title, boolean animated, boolean activateBackButton, ArrayList<String> exitUrlPatterns) {
         Intent intent = new Intent(cordova.getActivity().getApplicationContext(), CordovaWebViewImplement.class);
         intent.putExtra("URL", url);
         intent.putExtra("TITLE", title);
         intent.putExtra(ACTIVATE_BACK_BUTTON_KEY, activateBackButton);
+        intent.putStringArrayListExtra(EXIT_URL_PATTERNS_KEY, exitUrlPatterns);
 
         if (animated) {
             Bundle animBundle = ActivityOptionsCompat.makeCustomAnimation(
@@ -163,12 +170,27 @@ public class CordovaInAppView extends CordovaPlugin {
                 result.put("event", "closed");
                 String lastUrl = (intent != null) ? intent.getStringExtra("LAST_URL") : null;
                 result.put("url", lastUrl != null ? lastUrl : "");
+                boolean exitUrlMatched = intent != null && intent.getBooleanExtra(EXIT_URL_MATCHED_KEY, false);
+                result.put(EXIT_URL_MATCHED_KEY, exitUrlMatched);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
             callbackContext.success(result);
             callbackContext = null;
         }
+    }
+
+    private static ArrayList<String> toStringList(JSONArray array) {
+        ArrayList<String> list = new ArrayList<>();
+        if (array != null) {
+            for (int i = 0; i < array.length(); i++) {
+                String value = array.optString(i, null);
+                if (!TextUtils.isEmpty(value)) {
+                    list.add(value);
+                }
+            }
+        }
+        return list;
     }
 
     private int getIdentifier(String name) {

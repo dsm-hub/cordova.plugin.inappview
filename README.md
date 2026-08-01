@@ -88,6 +88,7 @@ cordova.plugins.CordovaInAppView.show(options, onSuccess, onError)
 | `title`              | `string`  | `''`    | Text displayed in the top bar.                           |
 | `animated`           | `boolean` | `true`  | Whether to use a slide-in animation on open.             |
 | `activateBackButton` | `boolean` | `true`  | Whether the hardware back button (Android) closes the view. |
+| `exitUrlPatterns`    | `string[]`| `[]`    | URL prefixes to intercept **before** they load (e.g. payment gateway return URLs). See [Callback Events](#callback-events). |
 
 **Callbacks**
 
@@ -126,19 +127,50 @@ cordova.plugins.CordovaInAppView.hide(
 
 The `onSuccess` callback of `show` receives a result object on every navigation. Check the `event` field to determine what happened.
 
-| `event`             | Fired when                                    | Includes `url` |
-|---------------------|-----------------------------------------------|----------------|
-| `navigationChanged` | A page finishes loading (every URL change)    | Yes            |
-| `closed`            | The view is dismissed (user or `hide()`)      | Yes — last URL |
+| `event`             | Fired when                                                        | Includes `url` |
+|---------------------|--------------------------------------------------------------------|----------------|
+| `navigationChanged` | A page finishes loading (every URL change)                        | Yes            |
+| `closed`            | The view is dismissed (user, `hide()`, or an `exitUrlPatterns` match) | Yes — last/matched URL |
 
 **Result object shape**
 
 ```js
 {
     event: "navigationChanged" | "closed",
-    url: "https://..."          // current or last URL
+    url: "https://...",          // current, last, or matched URL
+    exitUrlMatched: true | false // only present on "closed" — true if an exitUrlPatterns prefix triggered the close
 }
 ```
+
+### exitUrlPatterns: closing on a redirect, reliably
+
+`navigationChanged` only fires **after** a page has finished loading. That's too late for something like a payment gateway's return URL if the target page requires a session the in-app WebView doesn't have — the gateway can redirect to it, the private page can bounce again (to a login screen, an error page, whatever), and by the time `navigationChanged` fires, the URL you're matching against may no longer be there. That race is exactly what makes URL-sniffing-on-navigationChanged flaky.
+
+`exitUrlPatterns` avoids the race by matching **before** the navigation is ever allowed to load:
+
+```js
+cordova.plugins.CordovaInAppView.show(
+    {
+        url: payUrl,
+        exitUrlPatterns: [
+            'https://yourapp.com/pages/payment-success',
+            'https://yourapp.com/pages/payment-failed'
+        ]
+    },
+    (result) => {
+        if (result.event === 'closed' && result.exitUrlMatched) {
+            // result.url is the exact matched redirect URL — the in-app
+            // WebView never attempted to load it.
+            handlePaymentReturn(result.url)
+        } else if (result.event === 'closed') {
+            // User dismissed the view without completing payment
+        }
+    },
+    onError
+)
+```
+
+A match is a simple prefix check (`url.startsWith(pattern)`) performed on the native side, before the request is loaded.
 
 ---
 
@@ -168,7 +200,7 @@ cordova.plugins.CordovaInAppView.show(
 
 ### Payment Flow with Navigation Tracking
 
-A common use case is detecting a payment redirect URL and closing the view automatically.
+A common use case is detecting a payment redirect URL and closing the view automatically. Use `exitUrlPatterns` rather than matching on `navigationChanged` — matching against a page that already loaded is too late when the return page is gated behind the app's own session (see [exitUrlPatterns](#exiturlpatterns-closing-on-a-redirect-reliably)).
 
 ```js
 cordova.plugins.CordovaInAppView.show(
@@ -176,24 +208,24 @@ cordova.plugins.CordovaInAppView.show(
         url: payUrl,
         title: 'Payment',
         animated: true,
-        activateBackButton: true
+        activateBackButton: true,
+        exitUrlPatterns: [
+            'https://yourapp.com/pages/payment-success',
+            'https://yourapp.com/pages/payment-failed'
+        ]
     },
     (result) => {
-        const url = result?.url ?? ''
-        const event = result?.event
-
-        if (url.includes('/pages/payment-success')) {
-            // Close the webview immediately, then navigate in the app
-            cordova.plugins.CordovaInAppView.hide()
+        if (result.event === 'closed' && result.exitUrlMatched) {
+            // The gateway's redirect was intercepted before it ever loaded in
+            // the in-app view — result.url is the exact matched URL.
+            const url = result.url
             const paymentId = extractPaymentId(url)
-            history.push(`/pages/payment-success${paymentId ? `?payment_id=${paymentId}` : ''}`)
+            const page = url.startsWith('https://yourapp.com/pages/payment-success')
+                ? 'payment-success'
+                : 'payment-failed'
+            history.push(`/pages/${page}${paymentId ? `?payment_id=${paymentId}` : ''}`)
 
-        } else if (url.includes('/pages/payment-failed')) {
-            cordova.plugins.CordovaInAppView.hide()
-            const paymentId = extractPaymentId(url)
-            history.push(`/pages/payment-failed${paymentId ? `?payment_id=${paymentId}` : ''}`)
-
-        } else if (event === 'closed') {
+        } else if (result.event === 'closed') {
             // User dismissed the view without completing payment
             setSelectedPackage(null)
         }
@@ -205,7 +237,7 @@ cordova.plugins.CordovaInAppView.show(
 )
 ```
 
-> **How it works:** The `onSuccess` callback fires every time a page finishes loading. When the payment gateway redirects to a success or failure URL, your callback catches it immediately — no need to wait for the user to close the view manually.
+> **How it works:** As soon as a navigation targets a URL starting with one of `exitUrlPatterns`, the native layer cancels the load, closes the view, and calls `onSuccess` with `exitUrlMatched: true` and the matched URL — your app then performs the actual redirect using its own session/router, in the main app WebView, not the in-app one.
 
 ---
 
@@ -217,12 +249,14 @@ cordova.plugins.CordovaInAppView.show(
 - The top bar includes a centered title and a close button (`✕`) on the right.
 - The view is presented modally with `UIModalPresentationFullScreen`.
 - Navigation callbacks fire from `WKNavigationDelegate.webView:didFinishNavigation:`.
+- `exitUrlPatterns` are checked in `webView:decidePolicyForNavigationAction:decisionHandler:`, before the request is allowed to load.
 
 ### Android
 
 - Uses the system **WebView** with JavaScript and DOM storage enabled.
 - The WebView runs in a separate `Activity` (`CordovaWebViewImplement`) launched via `startActivityForResult`.
 - Navigation callbacks are bridged back to the plugin through a static `UrlChangeListener` interface called from `WebViewClient.onPageFinished`.
+- `exitUrlPatterns` are checked in `WebViewClient.shouldOverrideUrlLoading`, before the request is allowed to load.
 - Non-HTTP(S) URLs (e.g. `intent://`) are forwarded to the system via `Intent.ACTION_VIEW`.
 - Slide-in/out animations (`slide_in_right` / `slide_out_left`) are applied when `animated: true`.
 
